@@ -1,0 +1,53 @@
+version: '3.7'
+
+services:
+  traefik:
+    image: traefik:v2.0
+    networks:
+      - traefik-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "traefik.enable=false"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    command: --providers.docker --api --api.insecure=true --providers.docker.watch true
+
+  mariadb:
+    image: bitnami/mariadb:latest
+    labels:
+      - "traefik.enable=false"
+    environment:
+      - MARIADB_USER=bn_moodle
+      - MARIADB_DATABASE=bitnami_moodle
+      - MARIADB_PASSWORD=bitnami
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - database
+
+  moodle:
+    image: bitnami/moodle:3.11.7
+    environment:
+      - MOODLE_DATABASE_USER=bn_moodle
+      - MOODLE_DATABASE_NAME=bitnami_moodle
+      - MOODLE_DATABASE_PASSWORD=bitnami
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 8000:8080
+    depends_on:
+      - mariadb
+    networks:
+      - database
+      - traefik-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.moodle.loadbalancer.server.port=8080"
+      - "traefik.http.routers.moodle.rule=HostRegexp(`{catchall:.*}`)"
+      - "traefik.docker.network=traefik-proxy"
+
+networks:
+  database:
+    driver: bridge
+  traefik-proxy:
+    external: true
