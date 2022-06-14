@@ -1,10 +1,11 @@
-version: '3.7'
+version: "3.7"
 
 services:
   traefik:
-    image: traefik:v2.0
+    image: traefik:2.6.6
+    container_name: proxy_load_balancer
     networks:
-      - traefik-proxy
+      - traefik-proxy-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
@@ -12,7 +13,16 @@ services:
     ports:
       - "80:80"
       - "8080:8080"
-    command: --providers.docker --api --api.insecure=true --providers.docker.watch true
+    command:
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-proxy-network"
+      - "--entrypoints.web.address=:80"
+      - "--accesslog=true"
+      - "--log.level=DEBUG"
+      - "--api=true"
+      - "--api.dashboard=true"
 
   mariadb:
     image: bitnami/mariadb:latest
@@ -27,7 +37,8 @@ services:
       - database
 
   moodle:
-    image: bitnami/moodle:3.11.7
+    # image: bitnami/moodle:3.11.7
+    image: bitnami/moodle:4
     environment:
       - MOODLE_DATABASE_USER=bn_moodle
       - MOODLE_DATABASE_NAME=bitnami_moodle
@@ -39,15 +50,16 @@ services:
       - mariadb
     networks:
       - database
-      - traefik-proxy
+      - traefik-proxy-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.moodle.loadbalancer.server.port=8080"
-      - "traefik.http.routers.moodle.rule=HostRegexp(`{catchall:.*}`)"
-      - "traefik.docker.network=traefik-proxy"
+      # - "traefik.http.routers.moodle.rule=HostRegexp(`{catchall:.*}`)"
+      - "traefik.http.routers.moodle.rule=Host(`moodle.localhost`)"
+      - "traefik.docker.network=traefik-proxy-network"
 
 networks:
   database:
     driver: bridge
-  traefik-proxy:
+  traefik-proxy-network:
     external: true
