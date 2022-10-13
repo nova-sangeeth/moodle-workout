@@ -10,7 +10,7 @@ services:
       - MYSQL_DATABASE=moodle
 
   moodle:
-    image: bitnami/moodle:latest
+    image: bitnami/moodle:3.9.2-debian-10-r47
     ports:
       - 8080:8080
       - 8443:8443
@@ -19,6 +19,8 @@ services:
       - MOODLE_DATABASE_USER=root
       - MOODLE_DATABASE_PASSWORD=moodle
       - MOODLE_DATABASE_NAME=moodle
+      - MOODLE_HOST=moodle.localhost
+      - MOODLE_SITE_NAME=TESTSITE
       - PUID=998
       - PGID=100
     volumes:
